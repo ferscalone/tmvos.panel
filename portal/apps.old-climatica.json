@@ -1,0 +1,37 @@
+{
+  "pollIntervalSec": 5,
+  "apps": [
+    {
+      "id": "press",
+      "title": "Стенд на пресс",
+      "subtitle": "Нагрузочный стенд · сжатие",
+      "path": "/press/",
+      "status": {
+        "type": "stand",
+        "device": "http://192.168.3.53/v1/health",
+        "panel": "http://dashboard1/api/health"
+      }
+    },
+    {
+      "id": "bend",
+      "title": "Стенд на изгиб",
+      "subtitle": "Циклический изгиб",
+      "path": "/bend/",
+      "status": {
+        "type": "stand",
+        "device": "http://192.168.3.54/v1/health",
+        "panel": "http://dashboard2/api/health"
+      }
+    },
+    {
+      "id": "climatica",
+      "title": "Климатика",
+      "subtitle": "Климатические камеры · старая версия",
+      "path": "http://192.168.1.11:8000/",
+      "status": {
+        "type": "http",
+        "url": "http://climatica:8000/"
+      }
+    }
+  ]
+}

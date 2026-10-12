@@ -1,0 +1,51 @@
+# ── Шлюз TMVOS ───────────────────────────────────────────────────────────────
+# Единая точка входа http://tmvos.panel (http://192.168.1.11):
+#
+#   /             стартовая страница (карточки стендов со статусом)
+#   /press/       -> контейнер dashboard1   (nginx/apps/press.conf)
+#   /bend/        -> контейнер dashboard2   (nginx/apps/bend.conf)
+#   /climatica/   -> контейнер climatica    (nginx/apps/climatica.conf)
+#
+# Приложения живут в СВОИХ compose-проектах и обновляются независимо. Шлюз
+# находит их по имени в общей docker-сети "tmvos" (создаётся один раз:
+# `docker network create tmvos`). Если какое-то приложение остановлено, шлюз
+# и остальные панели продолжают работать - на его адресе будет заглушка.
+
+name: tmvos-gateway
+
+services:
+  nginx:
+    image: ${NGINX_IMAGE:-nginx:alpine}
+    container_name: tmvos-nginx
+    restart: unless-stopped
+    ports:
+      - "${HTTP_PORT:-80}:80"
+    volumes:
+      # Каталоги (а не отдельные файлы): правки подхватываются после
+      # `./reload-nginx.sh`, без пересоздания контейнера.
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./nginx/apps:/etc/nginx/apps:ro
+      - ./portal/public:/usr/share/nginx/portal:ro
+    networks:
+      - tmvos
+
+  portal:
+    # Сервис статусов для стартовой страницы: раз в несколько секунд опрашивает
+    # стенды и приложения по списку portal/apps.json и отдаёт сводку в
+    # /portal-api/status. Чистый Node без npm-зависимостей - сборка не нужна,
+    # код подключён томом.
+    image: ${NODE_IMAGE:-node:24-alpine}
+    container_name: tmvos-portal
+    restart: unless-stopped
+    working_dir: /srv
+    command: ["node", "server.mjs"]
+    environment:
+      TZ: "Europe/Moscow"
+    volumes:
+      - ./portal:/srv:ro
+    networks:
+      - tmvos
+
+networks:
+  tmvos:
+    external: true

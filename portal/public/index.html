@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TMVOS · Панель стендов</title>
+<script>
+  // Тема общая с дашбордами (тот же ключ localStorage на одном адресе).
+  try {
+    const t = localStorage.getItem("stand_theme");
+    if (t === "light" || t === "dark") document.documentElement.setAttribute("data-theme", t);
+  } catch (e) { /* нет доступа - тёмная по умолчанию */ }
+</script>
+<style>
+  :root {
+    --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --font-mono: ui-monospace, "Cascadia Mono", "Roboto Mono", Menlo, Consolas, monospace;
+    --r-lg: 14px;
+  }
+  :root[data-theme="dark"] {
+    --bg: oklch(19% 0.018 285);
+    --panel: oklch(22.5% 0.02 285);
+    --panel-hover: oklch(25.5% 0.024 285);
+    --border: oklch(32% 0.02 285);
+    --text: oklch(92.8% 0.012 280);
+    --text-hi: oklch(98.4% 0.005 275);
+    --muted: oklch(70.2% 0.024 285);
+    --faint: oklch(55.2% 0.028 285);
+    --accent: oklch(70.7% 0.165 255);
+    --ok: oklch(76.5% 0.177 163.223);
+    --warn: oklch(82.8% 0.189 84.429);
+    --off: oklch(55.2% 0.028 285);
+    --shadow: 0 1px 2px oklch(0% 0 0 / 0.4), 0 8px 24px oklch(0% 0 0 / 0.28);
+  }
+  :root[data-theme="light"] {
+    --bg: oklch(96.8% 0.007 247.896);
+    --panel: oklch(100% 0 0);
+    --panel-hover: oklch(98.4% 0.003 247.858);
+    --border: oklch(92.9% 0.013 255.508);
+    --text: oklch(27.9% 0.041 260.031);
+    --text-hi: oklch(20.8% 0.042 265.755);
+    --muted: oklch(44.6% 0.043 257.281);
+    --faint: oklch(55.4% 0.046 257.417);
+    --accent: oklch(54.6% 0.245 262.881);
+    --ok: oklch(59.6% 0.145 163.225);
+    --warn: oklch(66.6% 0.179 58.318);
+    --off: oklch(70.4% 0.04 256.788);
+    --shadow: 0 1px 2px oklch(20% 0.04 260 / 0.06), 0 6px 20px oklch(20% 0.04 260 / 0.06);
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font: 15px/1.45 var(--font-ui);
+    min-height: 100vh;
+  }
+  .wrap { max-width: 1040px; margin: 0 auto; padding: 32px 16px 48px; }
+
+  header { display: flex; align-items: center; gap: 12px; margin-bottom: 28px; }
+  header h1 { margin: 0; font-size: 22px; font-weight: 650; color: var(--text-hi); letter-spacing: -0.01em; }
+  header .sub { color: var(--muted); font-size: 14px; }
+  header .spacer { flex: 1; }
+  .icon-btn {
+    border: 1px solid var(--border); background: var(--panel); color: var(--muted);
+    border-radius: 8px; height: 34px; padding: 0 12px; font: inherit; font-size: 13px; cursor: pointer;
+  }
+  .icon-btn:hover { color: var(--text-hi); }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+
+  .card {
+    display: flex; flex-direction: column; gap: 14px;
+    background: var(--panel); border: 1px solid var(--border); border-radius: var(--r-lg);
+    box-shadow: var(--shadow); padding: 18px 18px 16px;
+    color: inherit; text-decoration: none;
+    transition: background .15s, border-color .15s, transform .15s;
+  }
+  .card:hover { background: var(--panel-hover); border-color: var(--accent); }
+  .card:active { transform: translateY(1px); }
+  .card:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .card-head { display: flex; align-items: flex-start; gap: 10px; }
+  .card-title { font-size: 17px; font-weight: 620; color: var(--text-hi); margin: 0; }
+  .card-sub { font-size: 13px; color: var(--muted); margin-top: 2px; }
+  .card-head .arrow { margin-left: auto; color: var(--faint); font-size: 18px; line-height: 1; }
+  .card:hover .arrow { color: var(--accent); }
+
+  .state { display: flex; align-items: center; gap: 8px; font-weight: 600; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--off); flex: none; }
+  .s-on .dot { background: var(--ok); box-shadow: 0 0 0 4px color-mix(in oklch, var(--ok) 22%, transparent); }
+  .s-on { color: var(--ok); }
+  .s-off { color: var(--muted); }
+  .s-unknown { color: var(--faint); }
+  .s-unknown .dot { background: transparent; border: 2px solid var(--faint); }
+
+  .details { display: grid; gap: 6px; margin: 0; padding: 10px 0 0; border-top: 1px solid var(--border); }
+  .details div { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+  .details dt { color: var(--muted); display: flex; align-items: center; gap: 8px; }
+  .details dd { margin: 0 0 0 auto; font-family: var(--font-mono); font-variant-numeric: tabular-nums; color: var(--text-hi); }
+  .details .s-off dd, .details .s-unknown dd { color: var(--faint); font-family: var(--font-ui); }
+  .details .dot { width: 7px; height: 7px; box-shadow: none !important; }
+
+  .warn { font-size: 13px; color: var(--warn); }
+
+  footer { margin-top: 28px; font-size: 12px; color: var(--faint); display: flex; gap: 16px; flex-wrap: wrap; }
+  .banner { margin-bottom: 16px; padding: 10px 14px; border-radius: 10px; border: 1px solid var(--warn); color: var(--warn); font-size: 14px; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Панель стендов</h1>
+      <div class="sub">TMVOS · выберите стенд</div>
+    </div>
+    <div class="spacer"></div>
+    <button class="icon-btn" id="theme" type="button" title="Сменить тему">Тема</button>
+  </header>
+
+  <div class="banner" id="banner" hidden></div>
+  <main class="grid" id="grid"></main>
+
+  <footer>
+    <span id="updated">Загрузка статусов…</span>
+  </footer>
+</div>
+
+<script>
+// Карточки строятся по ответу /portal-api/status (список берётся из apps.json
+// на сервере), поэтому новая панель появляется здесь без правки этой страницы.
+const grid = document.getElementById("grid");
+const banner = document.getElementById("banner");
+const updated = document.getElementById("updated");
+const REFRESH_MS = 3000;
+
+function el(tag, cls, text) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text != null) e.textContent = text;
+  return e;
+}
+
+function stateEl(state, text) {
+  const s = el("div", `state s-${state}`);
+  s.append(el("span", "dot"), el("span", "", text));
+  return s;
+}
+
+function card(app) {
+  const a = el("a", "card");
+  a.href = app.path;
+  a.dataset.id = app.id;
+
+  const head = el("div", "card-head");
+  const titles = el("div");
+  titles.append(el("h2", "card-title", app.title));
+  if (app.subtitle) titles.append(el("div", "card-sub", app.subtitle));
+  head.append(titles, el("span", "arrow", "→"));
+  a.append(head);
+
+  if (app.state !== "none") a.append(stateEl(app.state, app.text || ""));
+
+  if (Array.isArray(app.details) && app.details.length) {
+    const dl = el("dl", "details");
+    for (const d of app.details) {
+      const row = el("div", `s-${d.state || "unknown"}`);
+      const dt = el("dt");
+      dt.append(el("span", "dot"), el("span", "", d.label));
+      row.append(dt, el("dd", "", d.value));
+      dl.append(row);
+    }
+    a.append(dl);
+  }
+
+  if (app.warning) a.append(el("div", "warn", app.warning));
+  return a;
+}
+
+function render(data) {
+  grid.replaceChildren(...data.apps.map(card));
+  banner.hidden = !data.configError;
+  banner.textContent = data.configError ? `Ошибка в apps.json: ${data.configError}` : "";
+  const t = new Date(data.generatedAt).toLocaleTimeString("ru-RU");
+  updated.textContent = `Статусы обновлены в ${t}`;
+}
+
+async function refresh() {
+  try {
+    const r = await fetch("portal-api/status", { cache: "no-store" });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    render(await r.json());
+  } catch (e) {
+    updated.textContent = "Нет связи с сервисом статусов - показаны последние известные данные";
+  } finally {
+    setTimeout(refresh, REFRESH_MS);
+  }
+}
+refresh();
+
+document.getElementById("theme").addEventListener("click", () => {
+  const root = document.documentElement;
+  const next = root.getAttribute("data-theme") === "dark" ? "light" : "dark";
+  root.setAttribute("data-theme", next);
+  try { localStorage.setItem("stand_theme", next); } catch (e) { /* нет доступа */ }
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,15 @@
+# Шаблон маршрута для новой панели. Скопируйте в <имя>.conf (расширение .conf
+# обязательно - только такие файлы подключаются), замените:
+#   NAME      - путь в адресе (http://tmvos.panel/NAME/), латиница без пробелов
+#   CONTAINER - имя контейнера (или алиас) в сети tmvos
+#   PORT      - порт, который слушает приложение ВНУТРИ контейнера
+# Имя переменной ($NAME_upstream) должно быть уникальным для каждого файла.
+# Затем: ./reload-nginx.sh
+
+location = /NAME { return 301 /NAME/; }
+
+location /NAME/ {
+    set $NAME_upstream CONTAINER:PORT;
+    rewrite ^/NAME/(.*)$ /$1 break;
+    proxy_pass http://$NAME_upstream;
+}
